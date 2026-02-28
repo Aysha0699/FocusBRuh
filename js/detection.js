@@ -5,6 +5,10 @@ let motionLevel = 0;
 let missingTime = 0;
 let inBreak = false;
 
+let cooldownActive = false; // block distractions during cooldown
+const distractionCooldownMs = 10 * 1000; // 30s
+let cooldownInterval = null;
+
 const alarms = [
   "sounds/alarm1.mp3",
   "sounds/alarm2.mp3",
@@ -36,14 +40,15 @@ function startCamera() {
 
       if (lastX !== null) {
         motionLevel = Math.abs(currentX - lastX);
-
-        if (motionLevel > 0.15) {
-          triggerDistraction();
-        }
+        if (motionLevel > 0.15) triggerDistraction();
       }
 
       lastX = currentX;
-      document.getElementById("status").innerText = "Focused";
+
+      // Only show "Focused" if not in cooldown
+      if (!cooldownActive) {
+        document.getElementById("status").innerText = "Focused";
+      }
     }
   });
 
@@ -58,36 +63,43 @@ function startCamera() {
   camera.start();
 }
 
+// ===== Trigger Distraction =====
 function triggerDistraction() {
-  if (inBreak) return;
+  if (inBreak || cooldownActive) return;
 
   distractionCounter++;
   document.getElementById("distractionCount").innerText = distractionCounter;
-  document.getElementById("status").innerText = "⚠ Distraction!";
-  startBreak();
+  playRandomAlarm();
+
+  // Start cooldown
+  startCooldownUI(distractionCooldownMs);
 }
 
-function startBreak() {
-  inBreak = true;
-  let breakTime = 300;
+// ===== Cooldown UI =====
+function startCooldownUI(durationMs) {
+  cooldownActive = true;
+  pauseTimer(); // pause study timer
 
-  const breakInterval = setInterval(() => {
-    breakTime--;
-    document.getElementById("status").innerText = "Break: " + breakTime;
+  if (cooldownInterval) clearInterval(cooldownInterval);
 
-    if (breakTime <= 0) {
-      clearInterval(breakInterval);
-      playRandomAlarm();
-      inBreak = false;
+  let remaining = Math.floor(durationMs / 1000);
+  document.getElementById("status").innerText = `⚠ Cooldown: ${remaining}s`;
+
+  cooldownInterval = setInterval(() => {
+    remaining--;
+    if (remaining > 0) {
+      document.getElementById("status").innerText = `⚠ Cooldown: ${remaining}s`;
+    } else {
+      clearInterval(cooldownInterval);
+      cooldownInterval = null;
+      cooldownActive = false;
+      resumeTimer(); // resume study timer
+      document.getElementById("status").innerText = "Focused";
     }
   }, 1000);
 }
 
-function playRandomAlarm() {
-  const sound = alarms[Math.floor(Math.random()*alarms.length)];
-  new Audio(sound).play();
-}
-
+// ===== Tab Switch Detection =====
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     tabCounter++;
@@ -95,3 +107,24 @@ document.addEventListener("visibilitychange", () => {
     triggerDistraction();
   }
 });
+
+// ===== Play Alarm =====
+function playRandomAlarm() {
+  const sound = alarms[Math.floor(Math.random() * alarms.length)];
+  new Audio(sound).play().catch(e => console.warn("Alarm failed to play:", e));
+}
+
+// ===== Start Focus Session =====
+function startFocusSession(minutes) {
+  distractionCounter = 0;
+  tabCounter = 0;
+  lastX = null;
+  motionLevel = 0;
+  missingTime = 0;
+  inBreak = false;
+  cooldownActive = false;
+
+  showSessionScreen();
+  startTimer(minutes);
+  startCamera();
+}
