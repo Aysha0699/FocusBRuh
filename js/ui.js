@@ -3,6 +3,18 @@ const timerSelect = document.getElementById("timerSelect");
 const session = document.getElementById("session");
 const cheer = document.getElementById("cheer");
 
+document.getElementById("customStart").onclick = function () {
+
+  const input = document.getElementById("customMinutes");
+  const minutes = parseInt(input.value);
+
+  if (!minutes || minutes <= 0) {
+    alert("Please enter valid minutes");
+    return;
+  }
+
+  startFocusSession(minutes);
+};
 document.getElementById("startBtn").onclick = () => {
   dashboard.classList.add("hidden");
   timerSelect.classList.remove("hidden");

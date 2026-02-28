@@ -1,9 +1,17 @@
 function startFocusSession(minutes) {
+  // Reset counters and states
+  distractionCounter = 0;
+  tabCounter = 0;
+  lastX = null;
+  motionLevel = 0;
+  missingTime = 0;
+  inBreak = false;
+  lastDistractionTime = 0; // reset cooldown
+
   showSessionScreen();
   startTimer(minutes);
   startCamera();
 }
-
 function finishSession() {
   let reward = "⭐ Bronze Focus!";
   let streak = parseInt(localStorage.getItem("streak") || 0);
